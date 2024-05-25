@@ -1,7 +1,7 @@
 import requests
 
 API_URL = "https://api-inference.huggingface.co/models/deepset/roberta-base-squad2"
-API_TOKEN = "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"
+API_TOKEN = ""
 headers = {"Authorization": f"Bearer {API_TOKEN}"}
 
 def query(payload):
