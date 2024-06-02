@@ -7,6 +7,7 @@ import warnings
 from vector_database import VectorDatabase
 from LLM import get_answer_from_llm
 from LocalLLM import generate_response, initialize_model
+from llama3LLM import get_answer_from_llama3
 
 # Inicializar la base de datos vectorial solo una vez
 if 'vector_db' not in st.session_state:
@@ -33,7 +34,9 @@ def handle_userinput(user_question, chat_box, tokenizer, model):
             try:
                 #LLM LOCAL --> response = generate_response(tokenizer, model, context, user_question, max_new_tokens=50)
                 #LLM con API
-                answer = get_answer_from_llm(user_question, context)
+                #answer = get_answer_from_llm(user_question, context)
+                #LLM con llama3
+                answer = get_answer_from_llama3(user_question, context)
                 st.session_state.chat_history.append({"user": "User", "text": user_question})
                 st.session_state.chat_history.append({"user": "Chatbot", "text": answer})
                 update_chat_box(chat_box)
