@@ -4,9 +4,9 @@ import numpy as np
 class VectorDatabase:
     def __init__(self, dimension):
         self.dimension = dimension
-        self.index = faiss.IndexFlatIP(dimension)  # IndexFlatIP para busquedas basadas en similitud de coseno
+        self.index = faiss.IndexFlatIP(dimension)  # IndexFlatIP para búsquedas basadas en similitud de coseno
         self.documents = []
-
+        
     def add_document(self, embedding, document):
         if len(embedding) != self.dimension:
             print(f"Error: Embedding dimension {len(embedding)} does not match expected dimension {self.dimension}")

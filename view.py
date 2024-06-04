@@ -3,24 +3,23 @@ from PyPDF2 import PdfReader
 import fitz  # PyMuPDF
 import LocalEmbedding
 import io
-import warnings
 from vector_database import VectorDatabase
-from LLM import get_answer_from_llm
-from LocalLLM import generate_response, initialize_model
-from llama3LLM import get_answer_from_llama3
+from llama3LLM import get_answer_from_llama3, get_pdf_summary_from_llama3
 
-# Inicializar la base de datos vectorial solo una vez
 if 'vector_db' not in st.session_state:
-    dimension = 768  # Dimensión de embedding del modelo hkunlp/instructor-xl
+    dimension = 768
     st.session_state.vector_db = VectorDatabase(dimension)
 
 if 'chat_history' not in st.session_state:
     st.session_state.chat_history = []
-    
-if 'model' not in st.session_state or 'tokenizer' not in st.session_state:
-    st.session_state.tokenizer, st.session_state.model = initialize_model()
 
-def handle_userinput(user_question, chat_box, tokenizer, model):
+def reset_chat_state():
+    st.session_state.chat_history = []
+    st.session_state.pdf_processed = False
+    st.session_state.current_page = 0
+    st.session_state.processing = False
+
+def handle_userinput(user_question, chat_box):
     try:
         question_embedding = LocalEmbedding.get_embeddings(user_question)
         
@@ -32,10 +31,6 @@ def handle_userinput(user_question, chat_box, tokenizer, model):
             
             # Obtener la respuesta del LLM usando el contexto
             try:
-                #LLM LOCAL --> response = generate_response(tokenizer, model, context, user_question, max_new_tokens=50)
-                #LLM con API
-                #answer = get_answer_from_llm(user_question, context)
-                #LLM con llama3
                 answer = get_answer_from_llama3(user_question, context)
                 st.session_state.chat_history.append({"user": "User", "text": user_question})
                 st.session_state.chat_history.append({"user": "Chatbot", "text": answer})
@@ -49,7 +44,28 @@ def handle_userinput(user_question, chat_box, tokenizer, model):
     except Exception as e:
         st.session_state.chat_history.append({"user": "Chatbot", "text": f"Error: {e}"})
         update_chat_box(chat_box)
-
+        
+def pdf_summary():
+    summary_question = "What is the document about?"
+    try:
+        question_embedding = LocalEmbedding.get_embeddings(summary_question)
+        
+        relevant_texts = st.session_state.vector_db.search(question_embedding, top_k=3)
+        
+        if relevant_texts:
+            context = " ".join([text[1] for text in relevant_texts])
+            
+            try:
+                summary = get_pdf_summary_from_llama3(summary_question, context)
+                summary_text = "Welcome to LSDatasheet! Here's a summary of the PDF: " + summary + " I will be happy to answer any questions related to this document."
+                return summary_text
+            except Exception as e:
+                return f"An error occurred while fetching the answer: {e}"
+        else:
+            return "No relevant information found in the PDF."
+    except Exception as e:
+        return f"Error: {e}"
+            
 def pdf_preview(file_buffer):
     try:
         pdf_bytes = io.BytesIO(file_buffer.read())
@@ -88,17 +104,14 @@ def main():
 
         if pdf:
             if st.button("Process PDF"):
+                reset_chat_state()
                 st.session_state.processing = True
                 with st.spinner("Processing"):
                     try:
                         pdf_reader = PdfReader(pdf)
-                        pdf_text = ""
+                        pdf_text = "".join([page.extract_text() for page in pdf_reader.pages])
                         
-                        for page in pdf_reader.pages:
-                            pdf_text += page.extract_text()
-
                         chunks = LocalEmbedding.splitPDF(pdf_text)
-
                         for chunk in chunks:
                             embedding = LocalEmbedding.get_embeddings(chunk)
                             st.session_state.vector_db.add_document(embedding, chunk)
@@ -133,10 +146,15 @@ def main():
     if st.session_state.pdf_processed:
         chat_box = st.empty()
         update_chat_box(chat_box)
+        if not st.session_state.chat_history:
+            summary_text = pdf_summary()
+            st.session_state.chat_history.append({"user": "Chatbot", "text": summary_text})
+            update_chat_box(chat_box)
+
         user_input = st.text_input("Your question")
         if st.button("Send"):
             if user_input:
-                handle_userinput(user_input, chat_box, st.session_state.tokenizer, st.session_state.model)
+                handle_userinput(user_input, chat_box)
             else:
                 st.write("Please enter your question.")
 

@@ -1,8 +1,4 @@
-from sentence_transformers import SentenceTransformer
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from transformers import AutoTokenizer, AutoModel
-import torch.nn.functional as F
-from transformers import AutoModel, AutoTokenizer
 from langchain_community.vectorstores import FAISS
 from langchain.embeddings import HuggingFaceInstructEmbeddings
 
@@ -16,7 +12,6 @@ def splitPDF(text):
     text_split = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100, length_function=len)
     chunks = text_split.split_text(text=text)
     return chunks
-
 
 def get_embeddings(text):
     embeddings = HuggingFaceInstructEmbeddings(model_name='hkunlp/instructor-xl')
