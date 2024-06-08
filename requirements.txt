@@ -1,0 +1,11 @@
+streamlit
+PyPDF2
+fitz
+numpy
+requests
+faiss
+langchain
+langchain-community
+sentence-transformers
+torch
+transformers
